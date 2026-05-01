@@ -4,9 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Dashboard</title>
-<!-- Netlify Identity widget — handles Google/MS SSO -->
-<!-- Netlify Identity widget — handles Google SSO -->
-<script type="text/javascript" src="https://identity.netlify.com/v1/netlify-identity-widget.js"></script>
+<!-- Auth handled via direct GoTrue OAuth redirect — no widget needed -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
 <style>
@@ -698,22 +696,6 @@
     align-items: center;
     justify-content: center;
     z-index: 50;
-    pointer-events: none;
-    transition: background 0.2s;
-  }
-
-  /* When the widget iframe is open, hide our gate entirely so modal shows */
-  body.widget-open #auth-gate {
-    display: none;
-  }
-
-  /* Give the page a white background when widget is open so its modal is visible */
-  body.widget-open {
-    background: #fff;
-  }
-
-  .auth-box {
-    pointer-events: all;
   }
 
   #auth-gate.hidden { display: none; }
@@ -748,7 +730,8 @@
     margin-bottom: 28px;
   }
 
-  [data-netlify-identity-button] {
+  .auth-btn {
+    display: block;
     width: 100%;
     margin-top: 20px;
     padding: 12px 20px;
@@ -762,9 +745,10 @@
     cursor: pointer;
     transition: opacity 0.2s;
     text-align: center;
+    text-decoration: none;
   }
 
-  [data-netlify-identity-button]:hover { opacity: 0.85; }
+  .auth-btn:hover { opacity: 0.85; }
 
   .auth-error {
     font-size: 12px;
@@ -773,10 +757,9 @@
     min-height: 18px;
   }
 
-  /* Hide dashboard content until authenticated */
+  /* Hide dashboard until authenticated */
   body.authed #auth-gate { display: none; }
-  body:not(.authed):not(.widget-open) > *:not(#auth-gate) { visibility: hidden; }
-  body.widget-open > *:not(#auth-gate) { visibility: hidden; }
+  body:not(.authed) > *:not(#auth-gate) { visibility: hidden; }
 </style>
 </head>
 <body>
@@ -787,8 +770,8 @@
     <div class="auth-logo">●</div>
     <div class="auth-title">Operations Dashboard</div>
     <div class="auth-subtitle">Sign in to continue</div>
-    <!-- Widget attaches its own button here — no JS needed -->
-    <div data-netlify-identity-button></div>
+    <button class="auth-btn" id="auth-btn">Sign in with Google</button>
+    <div class="auth-error" id="auth-error"></div>
   </div>
 </div>
 
@@ -907,27 +890,65 @@
 
 <script>
 /* ═══════════════════════════════════════════
-   NETLIFY IDENTITY — event listeners only
-   No init() call — widget auto-inits from script tag
+   AUTH — GoTrue OAuth redirect (no widget)
+   Flow:
+   1. User clicks button → redirect to GoTrue /authorize?provider=google
+   2. Google auth completes → GoTrue redirects back with #access_token=...
+   3. We read token from hash, store in sessionStorage, show dashboard
+   4. Every /api/data fetch sends token as Authorization: Bearer header
    ═══════════════════════════════════════════ */
-netlifyIdentity.on('init', function(user) {
-  if (user) document.body.classList.add('authed');
-});
-netlifyIdentity.on('login', function() {
-  netlifyIdentity.close();
-  document.body.classList.add('authed');
-});
+(function () {
+  const GOTRUE  = 'https://dcc-dashboard.netlify.app/.netlify/identity';
+  const TOKEN_KEY = 'nf_access_token';
+  const EXPIRY_KEY = 'nf_token_expiry';
 
-// Watch the iframe visibility directly — the open/close events fire too early during init
-window.addEventListener('load', function() {
-  const iframe = document.getElementById('netlify-identity-widget');
-  if (!iframe) return;
-  const observer = new MutationObserver(function() {
-    const isOpen = iframe.style.display !== 'none';
-    document.body.classList.toggle('widget-open', isOpen);
+  function onLogin(token, expiresIn) {
+    sessionStorage.setItem(TOKEN_KEY, token);
+    // expiresIn is in seconds; store absolute expiry time
+    const expiry = Date.now() + (expiresIn ? expiresIn * 1000 : 3600 * 1000);
+    sessionStorage.setItem(EXPIRY_KEY, expiry);
+    document.body.classList.add('authed');
+  }
+
+  function getToken() {
+    const token = sessionStorage.getItem(TOKEN_KEY);
+    const expiry = parseInt(sessionStorage.getItem(EXPIRY_KEY) || '0', 10);
+    if (!token || Date.now() > expiry) {
+      sessionStorage.removeItem(TOKEN_KEY);
+      sessionStorage.removeItem(EXPIRY_KEY);
+      return null;
+    }
+    return token;
+  }
+
+  // Check for token in URL hash (returned by GoTrue after OAuth)
+  const hash = window.location.hash;
+  if (hash) {
+    const params = new URLSearchParams(hash.slice(1));
+    const token = params.get('access_token');
+    const expiresIn = params.get('expires_in');
+    if (token) {
+      history.replaceState(null, '', window.location.pathname);
+      onLogin(token, expiresIn ? parseInt(expiresIn, 10) : null);
+    }
+  }
+
+  // Check for existing valid session
+  if (!document.body.classList.contains('authed')) {
+    const token = getToken();
+    if (token) onLogin(token);
+  }
+
+  // Wire button — redirect to GoTrue Google OAuth
+  document.getElementById('auth-btn').addEventListener('click', function () {
+    const redirect = encodeURIComponent(window.location.origin + window.location.pathname);
+    window.location.href = GOTRUE + '/authorize?provider=google&redirect_to=' + redirect;
   });
-  observer.observe(iframe, { attributes: true, attributeFilter: ['style'] });
-});
+
+  // Expose getToken globally so fetchBigChange can use it
+  window.getAuthToken = getToken;
+})();
+
 
 /* ═══════════════════════════════════════════
    CONFIGURATION — edit these values
@@ -1389,8 +1410,16 @@ function renderUnassigned(jobs) {
 }
 
 async function fetchBigChange() {
+  const token = window.getAuthToken ? window.getAuthToken() : null;
+  if (!token) {
+    // Token expired or missing — drop back to login
+    document.body.classList.remove('authed');
+    return;
+  }
   try {
-    const res = await fetch('/api/data');
+    const res = await fetch('/api/data', {
+      headers: { 'Authorization': 'Bearer ' + token }
+    });
     if (res.status === 401) {
       // Session expired — drop back to login gate
       document.body.classList.remove('authed');
