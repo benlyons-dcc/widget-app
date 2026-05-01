@@ -697,6 +697,11 @@
     align-items: center;
     justify-content: center;
     z-index: 50;
+    pointer-events: none;
+  }
+
+  .auth-box {
+    pointer-events: all;
   }
 
   #auth-gate.hidden { display: none; }
@@ -769,9 +774,7 @@
     <div class="auth-logo">●</div>
     <div class="auth-title">Operations Dashboard</div>
     <div class="auth-subtitle">Sign in to continue</div>
-    <!-- Native Netlify Identity button — widget attaches to this automatically -->
     <div data-netlify-identity-button style="margin-top:20px;"></div>
-    <div class="auth-error" id="auth-error"></div>
   </div>
 </div>
 
