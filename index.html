@@ -774,7 +774,7 @@
     <div class="auth-logo">●</div>
     <div class="auth-title">Operations Dashboard</div>
     <div class="auth-subtitle">Sign in to continue</div>
-    <button class="auth-btn" id="auth-btn" disabled>Sign in with Google</button>
+    <button class="auth-btn" id="auth-btn">Sign in with Google</button>
   </div>
 </div>
 
@@ -900,32 +900,33 @@
     document.body.classList.add('authed');
   }
 
-  function initIdentity() {
+  function setup() {
     if (!window.netlifyIdentity) return;
 
-    const btn = document.getElementById('auth-btn');
-
-    netlifyIdentity.on('init', user => {
-      if (user) {
-        onLogin();
-      } else {
-        // Widget is ready — enable the button now
-        btn.disabled = false;
-        btn.addEventListener('click', () => netlifyIdentity.open('login'));
-      }
+    // Register events BEFORE calling init
+    netlifyIdentity.on('init', function (user) {
+      if (user) onLogin();
     });
 
-    netlifyIdentity.on('login', () => {
+    netlifyIdentity.on('login', function () {
       netlifyIdentity.close();
       onLogin();
     });
+
+    // Init once — required before open() will work
+    netlifyIdentity.init();
+
+    // Wire button after init is called
+    document.getElementById('auth-btn').addEventListener('click', function () {
+      netlifyIdentity.open('login');
+    });
   }
 
-  if (window.netlifyIdentity) {
-    initIdentity();
+  // Widget script is in <head> so it's available by the time body scripts run
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', setup);
   } else {
-    document.querySelector('script[src*="netlify-identity"]')
-      .addEventListener('load', initIdentity);
+    setup();
   }
 })();
 
