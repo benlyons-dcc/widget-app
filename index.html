@@ -917,19 +917,16 @@ netlifyIdentity.on('login', function() {
   netlifyIdentity.close();
   document.body.classList.add('authed');
 });
-netlifyIdentity.on('open', function() {
-  document.body.classList.add('widget-open');
-});
-netlifyIdentity.on('close', function() {
-  document.body.classList.remove('widget-open');
-});
 
-// Remove widget-open if it was incorrectly set during init
+// Watch the iframe visibility directly — the open/close events fire too early during init
 window.addEventListener('load', function() {
   const iframe = document.getElementById('netlify-identity-widget');
-  if (iframe && iframe.style.display === 'none') {
-    document.body.classList.remove('widget-open');
-  }
+  if (!iframe) return;
+  const observer = new MutationObserver(function() {
+    const isOpen = iframe.style.display !== 'none';
+    document.body.classList.toggle('widget-open', isOpen);
+  });
+  observer.observe(iframe, { attributes: true, attributeFilter: ['style'] });
 });
 
 /* ═══════════════════════════════════════════
