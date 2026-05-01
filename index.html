@@ -1,0 +1,1355 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0a0c10;
+    --surface: #111318;
+    --surface2: #181c22;
+    --border: rgba(255,255,255,0.07);
+    --border2: rgba(255,255,255,0.12);
+    --text: #f0f2f5;
+    --muted: #6b7280;
+    --accent: #4ade80;
+    --accent2: #38bdf8;
+    --accent3: #fb923c;
+    --accent4: #c084fc;
+    --danger: #f87171;
+    --warn: #fbbf24;
+    --mono: 'DM Mono', monospace;
+    --sans: 'Syne', sans-serif;
+  }
+
+  html, body {
+    width: 100%; height: 100%;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    overflow: hidden;
+  }
+
+  body {
+    display: grid;
+    grid-template-rows: auto 1fr 1fr;
+    grid-template-columns: 280px 1fr;
+    gap: 16px;
+    padding: 20px;
+    height: 100vh;
+  }
+
+  /* HEADER */
+  header {
+    grid-column: 1 / -1;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .brand {
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  .brand span { color: var(--accent); }
+
+  .header-clock {
+    text-align: right;
+  }
+
+  .clock-time {
+    font-family: var(--mono);
+    font-size: 36px;
+    font-weight: 300;
+    line-height: 1;
+    letter-spacing: -0.02em;
+    color: var(--text);
+  }
+
+  .clock-date {
+    font-size: 12px;
+    color: var(--muted);
+    margin-top: 4px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  /* CARDS */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    position: relative;
+  }
+
+  .card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--border2), transparent);
+  }
+
+  .card-label {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 16px;
+  }
+
+  /* WEATHER + FX CARD */
+  #weather-card {
+    grid-column: 1;
+    grid-row: 2 / 4;
+  }
+
+  .fx-divider {
+    border-top: 1px solid var(--border);
+    margin: 14px 0 12px;
+  }
+
+  .fx-pair {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 6px 0;
+  }
+
+  .fx-rate-inline {
+    font-family: var(--mono);
+    font-size: 20px;
+    font-weight: 300;
+    letter-spacing: -0.02em;
+  }
+
+  .weather-main {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+
+  .weather-icon-wrap {
+    width: 48px;
+    height: 48px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .weather-icon-wrap svg {
+    width: 44px;
+    height: 44px;
+  }
+
+  .weather-temp {
+    font-family: var(--mono);
+    font-size: 42px;
+    font-weight: 300;
+    line-height: 1;
+    letter-spacing: -0.03em;
+  }
+
+  .weather-temp sup {
+    font-size: 22px;
+    vertical-align: super;
+    font-weight: 400;
+    color: var(--muted);
+  }
+
+  .weather-desc {
+    font-size: 14px;
+    color: var(--muted);
+    margin-top: 4px;
+    text-transform: capitalize;
+  }
+
+  .weather-location {
+    font-size: 12px;
+    color: var(--accent2);
+    letter-spacing: 0.06em;
+    margin-top: 2px;
+  }
+
+  .weather-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 7px;
+    margin-top: auto;
+  }
+
+  .weather-stat {
+    background: var(--surface2);
+    border-radius: 8px;
+    padding: 7px 10px;
+  }
+
+  .weather-stat-label {
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+
+  .weather-stat-value {
+    font-family: var(--mono);
+    font-size: 18px;
+    font-weight: 400;
+    margin-top: 2px;
+    color: var(--text);
+  }
+
+  .forecast-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 5px;
+    margin-top: 10px;
+  }
+
+  .forecast-day {
+    flex: 1;
+    background: var(--surface2);
+    border-radius: 8px;
+    padding: 6px 4px;
+    text-align: center;
+  }
+
+  .forecast-day-name {
+    font-size: 9px;
+    color: var(--muted);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .forecast-day-temp {
+    font-family: var(--mono);
+    font-size: 13px;
+    margin-top: 2px;
+  }
+
+  .forecast-day-icon svg {
+    width: 22px;
+    height: 22px;
+    margin: 2px auto;
+    display: block;
+  }
+
+  /* FX (inline in weather card) */
+  .fx-pair-name {
+    font-family: var(--mono);
+    font-size: 13px;
+    font-weight: 500;
+    letter-spacing: 0.06em;
+    color: var(--muted);
+  }
+
+  .fx-change {
+    font-family: var(--mono);
+    font-size: 11px;
+    padding: 2px 6px;
+    border-radius: 5px;
+    font-weight: 500;
+  }
+
+  .fx-change.up {
+    background: rgba(74,222,128,0.12);
+    color: var(--accent);
+  }
+
+  .fx-change.down {
+    background: rgba(248,113,113,0.12);
+    color: var(--danger);
+  }
+
+  .fx-updated {
+    font-size: 10px;
+    color: var(--muted);
+    margin-top: 8px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+
+  /* Unassigned jobs — two column layout */
+  .unassigned-columns {
+    flex: 1;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    overflow: hidden;
+  }
+
+  .unassigned-col {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .unassigned-col-header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    margin-bottom: 8px;
+  }
+
+  .unassigned-col-title {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  .unassigned-col-count {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--muted);
+  }
+
+  .unassigned-list {
+    flex: 1;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .unassigned-day-group {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .unassigned-day-heading {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--accent2);
+    padding: 2px 0;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 2px;
+  }
+
+  .unassigned-day-slots {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 5px;
+  }
+
+  .unassigned-slot {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+  }
+
+  .unassigned-slot-label {
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--muted);
+    padding: 0 2px;
+  }
+
+  .unassigned-item {
+    display: grid;
+    grid-template-columns: 38px 1fr;
+    align-items: start;
+    gap: 6px;
+    padding: 5px 8px;
+    background: var(--surface2);
+    border-radius: 6px;
+    border-left: 2px solid var(--danger);
+    animation: fadeIn 0.3s ease;
+  }
+
+  .unassigned-time {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--danger);
+    padding-top: 1px;
+  }
+
+  .unassigned-job-title {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .unassigned-job-loc {
+    font-size: 10px;
+    color: var(--muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-top: 1px;
+  }
+
+  .config-banner {
+    background: rgba(251,146,60,0.08);
+    border: 1px solid rgba(251,146,60,0.2);
+    border-radius: 10px;
+    padding: 10px 14px;
+    margin-bottom: 12px;
+  }
+
+  .config-banner p {
+    font-size: 11px;
+    color: var(--accent3);
+    line-height: 1.5;
+  }
+
+  .config-banner code {
+    font-family: var(--mono);
+    background: rgba(251,146,60,0.15);
+    padding: 1px 5px;
+    border-radius: 4px;
+    font-size: 10px;
+  }
+
+  /* ── Gantt ── */
+  #bigchange-card {
+    overflow: hidden;
+  }
+
+  .gantt-wrap {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    position: relative;
+  }
+
+  .gantt-time-axis {
+    display: flex;
+    margin-left: 90px;
+    margin-bottom: 4px;
+    position: relative;
+  }
+
+  .gantt-tick {
+    flex: 1;
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 0.04em;
+    text-align: left;
+  }
+
+  .gantt-body {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+  }
+
+  .gantt-row {
+    display: flex;
+    align-items: center;
+    height: 28px;
+    flex-shrink: 0;
+  }
+
+  .gantt-tech-name {
+    width: 90px;
+    min-width: 90px;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--muted);
+    letter-spacing: 0.04em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    padding-right: 8px;
+  }
+
+  .gantt-track {
+    flex: 1;
+    height: 100%;
+    background: var(--surface2);
+    border-radius: 5px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .gantt-bar {
+    position: absolute;
+    top: 3px;
+    height: calc(100% - 6px);
+    border-radius: 3px;
+    display: flex;
+    align-items: center;
+    padding: 0 6px;
+    overflow: hidden;
+    cursor: default;
+    transition: opacity 0.2s;
+  }
+
+  .gantt-bar:hover { opacity: 0.85; }
+
+  .gantt-bar-label {
+    font-size: 10px;
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    letter-spacing: 0.02em;
+  }
+
+  .gantt-bar.scheduled    { background: rgba(56,189,248,0.25); border-left: 2px solid var(--accent2); }
+  .gantt-bar.scheduled .gantt-bar-label { color: var(--accent2); }
+  .gantt-bar.inprogress   { background: rgba(251,191,36,0.25);  border-left: 2px solid var(--warn); }
+  .gantt-bar.inprogress .gantt-bar-label { color: var(--warn); }
+  .gantt-bar.completed    { background: rgba(74,222,128,0.15);  border-left: 2px solid var(--accent); }
+  .gantt-bar.completed .gantt-bar-label { color: var(--accent); }
+  .gantt-bar.notcompleted { background: rgba(248,113,113,0.2);  border-left: 2px solid var(--danger); }
+  .gantt-bar.notcompleted .gantt-bar-label { color: var(--danger); }
+
+  .gantt-grid-line {
+    position: absolute;
+    top: 0; bottom: 0;
+    width: 1px;
+    background: var(--border);
+    pointer-events: none;
+  }
+
+  .gantt-now-line {
+    position: absolute;
+    top: 0; bottom: 0;
+    width: 2px;
+    background: var(--accent3);
+    opacity: 0.7;
+    pointer-events: none;
+    z-index: 10;
+  }
+
+  /* Weekly Gantt */
+  .gantt-week-day-label {
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--muted);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    text-align: center;
+  }
+
+  .gantt-week-day-label.today { color: var(--accent2); }
+
+  /* bc tabs / view */
+  .bc-tab {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    padding: 3px 8px;
+    border-radius: 5px;
+    color: var(--muted);
+    cursor: pointer;
+    transition: all 0.2s;
+    user-select: none;
+  }
+
+  .bc-tab:hover { color: var(--text); }
+
+  .bc-tab-active {
+    background: rgba(255,255,255,0.08);
+    color: var(--text);
+  }
+
+  .bc-view {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    transition: opacity 0.4s ease;
+  }
+
+  .bc-view.fading { opacity: 0; }
+    display: inline-block;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--accent);
+    margin-right: 6px;
+    animation: pulse 2s infinite;
+    vertical-align: middle;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(4px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .error-text {
+    color: var(--danger);
+    font-size: 12px;
+    font-family: var(--mono);
+  }
+
+  /* Scrollbar hidden */
+  ::-webkit-scrollbar { display: none; }
+
+  .bc-tab {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    padding: 3px 8px;
+    border-radius: 5px;
+    color: var(--muted);
+    transition: all 0.2s;
+  }
+
+  .bc-tab-active {
+    background: rgba(255,255,255,0.08);
+    color: var(--text);
+  }
+
+  .bc-view {
+    transition: opacity 0.4s ease;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .bc-view.fading { opacity: 0; }
+
+  .weekly-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+    flex: 1;
+  }
+
+  .weekly-row {
+    display: grid;
+    grid-template-columns: 52px 1fr 36px;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .weekly-day {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  .weekly-day.today { color: var(--accent2); }
+
+  .weekly-bar-wrap {
+    height: 18px;
+    background: var(--surface2);
+    border-radius: 4px;
+    overflow: hidden;
+    display: flex;
+  }
+
+  .weekly-bar-segment {
+    height: 100%;
+    transition: width 0.6s ease;
+  }
+
+  .weekly-total {
+    font-family: var(--mono);
+    font-size: 13px;
+    color: var(--muted);
+    text-align: right;
+  }
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════ HEADER ═══════════════════ -->
+<header>
+  <div class="brand"><span>●</span> Operations Dashboard</div>
+  <div class="header-clock">
+    <div class="clock-time" id="clock">--:--:--</div>
+    <div class="clock-date" id="date">Loading...</div>
+  </div>
+</header>
+
+<!-- ═══════════════════ WEATHER + FX ═══════════════════ -->
+<div class="card" id="weather-card">
+  <div class="card-label"><span class="live-dot"></span>Weather</div>
+
+  <div class="weather-main">
+    <div class="weather-icon-wrap" id="weather-icon"></div>
+    <div>
+      <div class="weather-temp" id="weather-temp">--<sup>°C</sup></div>
+      <div class="weather-desc" id="weather-desc">Loading...</div>
+      <div class="weather-location" id="weather-loc">Detecting location...</div>
+    </div>
+  </div>
+
+  <div class="weather-grid">
+    <div class="weather-stat">
+      <div class="weather-stat-label">Feels like</div>
+      <div class="weather-stat-value" id="feels-like">--°</div>
+    </div>
+    <div class="weather-stat">
+      <div class="weather-stat-label">Humidity</div>
+      <div class="weather-stat-value" id="humidity">--%</div>
+    </div>
+    <div class="weather-stat">
+      <div class="weather-stat-label">Wind</div>
+      <div class="weather-stat-value" id="wind">-- km/h</div>
+    </div>
+    <div class="weather-stat">
+      <div class="weather-stat-label">Visibility</div>
+      <div class="weather-stat-value" id="visibility">-- km</div>
+    </div>
+  </div>
+
+  <div class="forecast-row" id="forecast-row"></div>
+
+  <div class="fx-divider"></div>
+
+  <div class="card-label" style="margin-bottom:10px;"><span class="live-dot"></span>Exchange Rates</div>
+  <div class="fx-pair">
+    <div class="fx-pair-name">GBP / USD</div>
+    <div style="display:flex;align-items:center;gap:8px;">
+      <div class="fx-change" id="gbpusd-change" style="display:none"></div>
+      <div class="fx-rate-inline" id="gbpusd-rate">--</div>
+    </div>
+  </div>
+  <div class="fx-pair">
+    <div class="fx-pair-name">GBP / EUR</div>
+    <div style="display:flex;align-items:center;gap:8px;">
+      <div class="fx-change" id="gbpeur-change" style="display:none"></div>
+      <div class="fx-rate-inline" id="gbpeur-rate">--</div>
+    </div>
+  </div>
+  <div class="fx-updated" id="fx-updated">Fetching rates...</div>
+</div>
+
+<!-- ═══════════════════ BIGCHANGE (spans bottom 2 cols) ═══════════════════ -->
+<div class="card" id="bigchange-card" style="grid-column:2/4;grid-row:2/4;">
+  <div class="card-label" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+    <span><span class="live-dot"></span>BigChange — Schedule</span>
+    <span id="bc-view-tabs" style="display:flex;gap:6px;">
+      <span id="bc-tab-daily" class="bc-tab bc-tab-active">Today</span>
+      <span id="bc-tab-weekly" class="bc-tab">This Week</span>
+      <span id="bc-tab-unassigned" class="bc-tab">Unassigned</span>
+    </span>
+  </div>
+
+  <div class="config-banner" id="config-banner">
+    <p>Set <code>apiKey</code>, <code>username</code>, and <code>password</code> in the CONFIG block. Demo data shown until connected.</p>
+  </div>
+
+  <div id="bc-view-daily" class="bc-view">
+    <div class="gantt-wrap">
+      <div class="gantt-time-axis" id="gantt-axis-daily"></div>
+      <div class="gantt-body" id="gantt-body-daily"></div>
+      <div class="gantt-now-line" id="gantt-now-line" style="display:none;"></div>
+    </div>
+  </div>
+
+  <div id="bc-view-weekly" class="bc-view" style="display:none;">
+    <div class="gantt-wrap">
+      <div class="gantt-time-axis" id="gantt-axis-weekly"></div>
+      <div class="gantt-body" id="gantt-body-weekly"></div>
+    </div>
+  </div>
+
+  <div id="bc-view-unassigned" class="bc-view" style="display:none;">
+    <div class="unassigned-columns">
+      <div class="unassigned-col">
+        <div class="unassigned-col-header">
+          <span class="unassigned-col-title">This Week</span>
+          <span class="unassigned-col-count" id="unassigned-count-this"></span>
+        </div>
+        <div class="unassigned-list" id="unassigned-list-this"></div>
+      </div>
+      <div class="unassigned-col">
+        <div class="unassigned-col-header">
+          <span class="unassigned-col-title">Next Week</span>
+          <span class="unassigned-col-count" id="unassigned-count-next"></span>
+        </div>
+        <div class="unassigned-list" id="unassigned-list-next"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ═══════════════════════════════════════════
+   CONFIGURATION — edit these values
+   ═══════════════════════════════════════════ */
+const CONFIG = {
+  /* Weather: uses Open-Meteo (free, no key needed).
+     Leave null to default to London, or set coordinates for your location. */
+  weather: {
+    latitude: null,   // e.g. 53.8008 for Leeds
+    longitude: null,  // e.g. -1.5491 for Leeds
+    locationName: null // e.g. "Leeds, UK" — shown on widget
+  },
+
+  /* Exchange rates: uses Frankfurter (free, no key needed) */
+  fx: { enabled: true },
+
+  /* BigChange REST API credentials */
+  bigchange: {
+    apiKey: '',      // Your BigChange API key
+    username: '',    // Your BigChange username
+    password: ''     // Your BigChange password
+  },
+
+  /* Refresh intervals (milliseconds) */
+  refresh: {
+    clock: 1000,
+    weather: 10 * 60 * 1000,  // 10 minutes
+    fx: 5 * 60 * 1000,         // 5 minutes
+    bigchange: 2 * 60 * 1000   // 2 minutes
+  }
+};
+
+/* ═══════════════════════════════════════════
+   CLOCK
+   ═══════════════════════════════════════════ */
+function updateClock() {
+  const now = new Date();
+  const time = now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  const date = now.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+  document.getElementById('clock').textContent = time;
+  document.getElementById('date').textContent = date;
+}
+updateClock();
+setInterval(updateClock, CONFIG.refresh.clock);
+
+/* ═══════════════════════════════════════════
+   WEATHER ICONS (inline SVG)
+   ═══════════════════════════════════════════ */
+const WMO_ICONS = {
+  clear: `<svg viewBox="0 0 56 56" fill="none">
+    <circle cx="28" cy="28" r="11" fill="#fbbf24" opacity="0.9"/>
+    <g stroke="#fbbf24" stroke-width="2.5" stroke-linecap="round" opacity="0.7">
+      <line x1="28" y1="6" x2="28" y2="12"/>
+      <line x1="28" y1="44" x2="28" y2="50"/>
+      <line x1="6" y1="28" x2="12" y2="28"/>
+      <line x1="44" y1="28" x2="50" y2="28"/>
+      <line x1="13.5" y1="13.5" x2="17.7" y2="17.7"/>
+      <line x1="38.3" y1="38.3" x2="42.5" y2="42.5"/>
+      <line x1="42.5" y1="13.5" x2="38.3" y2="17.7"/>
+      <line x1="17.7" y1="38.3" x2="13.5" y2="42.5"/>
+    </g>
+  </svg>`,
+  partlycloudy: `<svg viewBox="0 0 56 56" fill="none">
+    <circle cx="22" cy="24" r="9" fill="#fbbf24" opacity="0.8"/>
+    <ellipse cx="30" cy="34" rx="14" ry="9" fill="#94a3b8"/>
+    <ellipse cx="18" cy="36" rx="9" ry="6" fill="#94a3b8"/>
+    <ellipse cx="38" cy="37" rx="8" ry="5" fill="#94a3b8"/>
+    <ellipse cx="28" cy="32" rx="18" ry="8" fill="#cbd5e1"/>
+  </svg>`,
+  cloudy: `<svg viewBox="0 0 56 56" fill="none">
+    <ellipse cx="28" cy="30" rx="17" ry="10" fill="#64748b"/>
+    <ellipse cx="16" cy="32" rx="10" ry="7" fill="#64748b"/>
+    <ellipse cx="40" cy="33" rx="9" ry="6" fill="#64748b"/>
+    <ellipse cx="26" cy="27" rx="20" ry="9" fill="#94a3b8"/>
+  </svg>`,
+  rain: `<svg viewBox="0 0 56 56" fill="none">
+    <ellipse cx="28" cy="22" rx="17" ry="9" fill="#475569"/>
+    <ellipse cx="16" cy="24" rx="10" ry="6" fill="#475569"/>
+    <ellipse cx="40" cy="25" rx="9" ry="5" fill="#475569"/>
+    <ellipse cx="26" cy="19" rx="20" ry="8" fill="#64748b"/>
+    <g stroke="#38bdf8" stroke-width="2" stroke-linecap="round" opacity="0.8">
+      <line x1="20" y1="36" x2="17" y2="46"/>
+      <line x1="28" y1="34" x2="25" y2="44"/>
+      <line x1="36" y1="36" x2="33" y2="46"/>
+    </g>
+  </svg>`,
+  snow: `<svg viewBox="0 0 56 56" fill="none">
+    <ellipse cx="28" cy="22" rx="17" ry="9" fill="#475569"/>
+    <ellipse cx="26" cy="19" rx="20" ry="8" fill="#64748b"/>
+    <g fill="#e0f2fe" opacity="0.9">
+      <circle cx="20" cy="38" r="2.5"/>
+      <circle cx="28" cy="36" r="2.5"/>
+      <circle cx="36" cy="38" r="2.5"/>
+      <circle cx="24" cy="45" r="2"/>
+      <circle cx="32" cy="44" r="2"/>
+    </g>
+  </svg>`,
+  thunder: `<svg viewBox="0 0 56 56" fill="none">
+    <ellipse cx="28" cy="20" rx="17" ry="9" fill="#374151"/>
+    <ellipse cx="26" cy="17" rx="20" ry="8" fill="#4b5563"/>
+    <polygon points="30,28 24,38 29,38 23,50 34,34 28,34" fill="#fbbf24"/>
+  </svg>`,
+  fog: `<svg viewBox="0 0 56 56" fill="none">
+    <g stroke="#94a3b8" stroke-width="2.5" stroke-linecap="round" opacity="0.7">
+      <line x1="8" y1="22" x2="48" y2="22"/>
+      <line x1="12" y1="30" x2="44" y2="30"/>
+      <line x1="8" y1="38" x2="48" y2="38"/>
+    </g>
+  </svg>`
+};
+
+function getWeatherIcon(code) {
+  if (code === 0) return WMO_ICONS.clear;
+  if (code <= 2) return WMO_ICONS.partlycloudy;
+  if (code <= 48) return WMO_ICONS.fog;
+  if (code <= 67) return WMO_ICONS.rain;
+  if (code <= 77) return WMO_ICONS.snow;
+  if (code <= 82) return WMO_ICONS.rain;
+  return WMO_ICONS.thunder;
+}
+
+function getWeatherDesc(code) {
+  if (code === 0) return 'Clear sky';
+  if (code === 1) return 'Mainly clear';
+  if (code === 2) return 'Partly cloudy';
+  if (code === 3) return 'Overcast';
+  if (code <= 48) return 'Foggy';
+  if (code <= 55) return 'Drizzle';
+  if (code <= 67) return 'Rain';
+  if (code <= 77) return 'Snow';
+  if (code <= 82) return 'Rain showers';
+  return 'Thunderstorm';
+}
+
+/* ═══════════════════════════════════════════
+   WEATHER
+   ═══════════════════════════════════════════ */
+async function fetchWeather(lat, lon, name) {
+  try {
+    const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,apparent_temperature,relative_humidity_2m,wind_speed_10m,weather_code,visibility&daily=weather_code,temperature_2m_max,temperature_2m_min&timezone=auto&forecast_days=6`;
+    const res = await fetch(url);
+    const d = await res.json();
+    const c = d.current;
+
+    document.getElementById('weather-icon').innerHTML = getWeatherIcon(c.weather_code);
+    document.getElementById('weather-temp').innerHTML = `${Math.round(c.temperature_2m)}<sup>°C</sup>`;
+    document.getElementById('weather-desc').textContent = getWeatherDesc(c.weather_code);
+    document.getElementById('weather-loc').textContent = name || `${lat.toFixed(2)}, ${lon.toFixed(2)}`;
+    document.getElementById('feels-like').textContent = `${Math.round(c.apparent_temperature)}°`;
+    document.getElementById('humidity').textContent = `${c.relative_humidity_2m}%`;
+    document.getElementById('wind').textContent = `${Math.round(c.wind_speed_10m)} km/h`;
+    document.getElementById('visibility').textContent = `${(c.visibility / 1000).toFixed(1)} km`;
+
+    const days = d.daily;
+    const dayNames = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+    let forecastHTML = '';
+    for (let i = 1; i <= 5; i++) {
+      const dt = new Date(days.time[i] + 'T00:00:00');
+      forecastHTML += `<div class="forecast-day">
+        <div class="forecast-day-name">${dayNames[dt.getDay()]}</div>
+        <div class="forecast-day-icon">${getWeatherIcon(days.weather_code[i])}</div>
+        <div class="forecast-day-temp">${Math.round(days.temperature_2m_max[i])}°</div>
+      </div>`;
+    }
+    document.getElementById('forecast-row').innerHTML = forecastHTML;
+  } catch(e) {
+    document.getElementById('weather-desc').textContent = 'Unable to load weather';
+    document.getElementById('weather-desc').classList.add('error-text');
+  }
+}
+
+function initWeather() {
+  if (CONFIG.weather.latitude && CONFIG.weather.longitude) {
+    const name = CONFIG.weather.locationName || `${CONFIG.weather.latitude.toFixed(2)}, ${CONFIG.weather.longitude.toFixed(2)}`;
+    document.getElementById('weather-loc').textContent = name;
+    fetchWeather(CONFIG.weather.latitude, CONFIG.weather.longitude, name);
+  } else {
+    fetchWeather(51.5074, -0.1278, 'London, UK');
+  }
+}
+
+initWeather();
+setInterval(initWeather, CONFIG.refresh.weather);
+
+/* ═══════════════════════════════════════════
+   FX RATES — Frankfurter API (free, no key)
+   ═══════════════════════════════════════════ */
+async function fetchFX() {
+  if (!CONFIG.fx.enabled) return;
+  try {
+    const res = await fetch('https://api.frankfurter.dev/v2/rates?base=GBP&quotes=USD,EUR');
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const d = await res.json();
+    // v2 API returns an array of {date, base, quote, rate} objects
+    const usd = d.find(r => r.quote === 'USD').rate;
+    const eur = d.find(r => r.quote === 'EUR').rate;
+
+    document.getElementById('gbpusd-rate').textContent = usd.toFixed(4);
+    document.getElementById('gbpeur-rate').textContent = eur.toFixed(4);
+
+    // Fetch previous working day for change %
+    const prevRes = await fetch('https://api.frankfurter.dev/v2/rates?base=GBP&quotes=USD,EUR&date=prev');
+    if (prevRes.ok) {
+      const prev = await prevRes.json();
+      showFXChange('gbpusd-change', usd, prev.find(r => r.quote === 'USD').rate);
+      showFXChange('gbpeur-change', eur, prev.find(r => r.quote === 'EUR').rate);
+    }
+
+    const now = new Date();
+    document.getElementById('fx-updated').textContent = `Updated ${now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })} · ECB reference rates`;
+  } catch(e) {
+    document.getElementById('fx-updated').textContent = 'Rate feed unavailable';
+  }
+}
+
+function showFXChange(id, current, baseline) {
+  const el = document.getElementById(id);
+  const diff = current - baseline;
+  const pct = ((diff / baseline) * 100).toFixed(2);
+  el.textContent = `${diff >= 0 ? '+' : ''}${pct}%`;
+  el.className = `fx-change ${diff >= 0 ? 'up' : 'down'}`;
+  el.style.display = 'inline-block';
+}
+
+fetchFX();
+setInterval(fetchFX, CONFIG.refresh.fx);
+
+/* ═══════════════════════════════════════════
+   BIGCHANGE — Gantt Schedule
+   ═══════════════════════════════════════════ */
+
+const GANTT_START_H = 7;   // 07:00
+const GANTT_END_H   = 18;  // 18:00
+const GANTT_SPAN    = (GANTT_END_H - GANTT_START_H) * 60; // minutes
+
+// Demo technicians + jobs for daily view
+const DEMO_TECHNICIANS = [
+  { name: 'J. Smith', jobs: [
+    { title: 'Boiler Service', start: '07:30', end: '09:00', status: 'completed' },
+    { title: 'AC Install', start: '09:30', end: '12:00', status: 'completed' },
+    { title: 'Leak Repair', start: '13:00', end: '14:30', status: 'inprogress' },
+    { title: 'Inspection', start: '15:00', end: '16:30', status: 'scheduled' },
+  ]},
+  { name: 'A. Patel', jobs: [
+    { title: 'Gas Safety', start: '08:00', end: '09:30', status: 'completed' },
+    { title: 'Pump Replace', start: '10:00', end: '12:30', status: 'completed' },
+    { title: 'Annual Svc', start: '13:30', end: '15:30', status: 'scheduled' },
+  ]},
+  { name: 'R. Clarke', jobs: [
+    { title: 'Emergency Call', start: '07:00', end: '08:30', status: 'completed' },
+    { title: 'Installation', start: '09:00', end: '12:00', status: 'inprogress' },
+    { title: 'Commissioning', start: '13:00', end: '16:00', status: 'scheduled' },
+  ]},
+  { name: 'S. Khan', jobs: [
+    { title: 'Service', start: '08:30', end: '10:00', status: 'completed' },
+    { title: 'Fault Diag', start: '10:30', end: '12:00', status: 'notcompleted' },
+    { title: 'New Install', start: '13:00', end: '17:00', status: 'scheduled' },
+  ]},
+  { name: 'L. Okafor', jobs: [
+    { title: 'Maintenance', start: '09:00', end: '11:00', status: 'completed' },
+    { title: 'System Check', start: '11:30', end: '13:00', status: 'completed' },
+    { title: 'Repair', start: '14:00', end: '15:30', status: 'inprogress' },
+    { title: 'Sign-off', start: '16:00', end: '17:30', status: 'scheduled' },
+  ]},
+  { name: 'T. Barnes', jobs: [
+    { title: 'Warranty Call', start: '07:30', end: '09:30', status: 'completed' },
+    { title: 'Service', start: '10:00', end: '11:30', status: 'completed' },
+    { title: 'Inspection', start: '14:00', end: '16:30', status: 'scheduled' },
+  ]},
+];
+
+// Demo weekly data — jobs per technician per day
+const DEMO_WEEK_GANTT = {
+  days: ['Mon','Tue','Wed','Thu','Fri'],
+  techs: [
+    { name: 'J. Smith',  counts: [5, 4, 6, 4, 3] },
+    { name: 'A. Patel',  counts: [4, 5, 4, 3, 4] },
+    { name: 'R. Clarke', counts: [6, 3, 5, 3, 2] },
+    { name: 'S. Khan',   counts: [3, 4, 3, 3, 4] },
+    { name: 'L. Okafor', counts: [5, 6, 4, 4, 3] },
+    { name: 'T. Barnes', counts: [4, 3, 5, 3, 3] },
+  ]
+};
+
+let bcCurrentView = 'daily';
+
+function timeToMin(t) {
+  const [h, m] = t.split(':').map(Number);
+  return h * 60 + m;
+}
+
+function pct(minutes) {
+  return Math.max(0, Math.min(100, (minutes - GANTT_START_H * 60) / GANTT_SPAN * 100));
+}
+
+function renderDailyGantt(techs) {
+  const axisEl = document.getElementById('gantt-axis-daily');
+  const bodyEl = document.getElementById('gantt-body-daily');
+  const nowLine = document.getElementById('gantt-now-line');
+
+  // Time axis ticks every 2 hours
+  const ticks = [];
+  for (let h = GANTT_START_H; h <= GANTT_END_H; h += 2) {
+    ticks.push(`<div class="gantt-tick">${String(h).padStart(2,'0')}:00</div>`);
+  }
+  axisEl.innerHTML = ticks.join('');
+
+  // Rows
+  bodyEl.innerHTML = techs.map(tech => {
+    const gridLines = [];
+    for (let h = GANTT_START_H; h <= GANTT_END_H; h += 2) {
+      gridLines.push(`<div class="gantt-grid-line" style="left:${pct(h*60).toFixed(2)}%"></div>`);
+    }
+
+    const bars = tech.jobs.map(job => {
+      const startMin = timeToMin(job.start);
+      const endMin   = timeToMin(job.end);
+      const left     = pct(startMin).toFixed(2);
+      const width    = Math.max(0.5, pct(endMin) - pct(startMin)).toFixed(2);
+      return `<div class="gantt-bar ${job.status}" style="left:${left}%;width:${width}%;" title="${job.title} (${job.start}–${job.end})">
+        <span class="gantt-bar-label">${job.title}</span>
+      </div>`;
+    }).join('');
+
+    return `<div class="gantt-row">
+      <div class="gantt-tech-name">${tech.name}</div>
+      <div class="gantt-track">${gridLines.join('')}${bars}</div>
+    </div>`;
+  }).join('');
+
+  // Now line
+  const now = new Date();
+  const nowMin = now.getHours() * 60 + now.getMinutes();
+  if (nowMin >= GANTT_START_H * 60 && nowMin <= GANTT_END_H * 60) {
+    const left = pct(nowMin).toFixed(2);
+    const bodyRect = bodyEl.getBoundingClientRect();
+    nowLine.style.display = 'block';
+    nowLine.style.left = `calc(90px + ${left}% * (100% - 90px) / 100)`;
+    nowLine.style.top = axisEl.offsetHeight + 'px';
+  } else {
+    nowLine.style.display = 'none';
+  }
+}
+
+function renderWeeklyGantt(weekData) {
+  const axisEl = document.getElementById('gantt-axis-weekly');
+  const bodyEl = document.getElementById('gantt-body-weekly');
+  const todayName = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][new Date().getDay()];
+
+  // Day axis
+  const dayPct = 100 / weekData.days.length;
+  axisEl.style.display = 'flex';
+  axisEl.style.marginLeft = '90px';
+  axisEl.style.marginBottom = '4px';
+  axisEl.innerHTML = weekData.days.map(d =>
+    `<div class="gantt-tick gantt-week-day-label${d === todayName ? ' today' : ''}" style="flex:1;text-align:center;">${d}${d === todayName ? ' ●' : ''}</div>`
+  ).join('');
+
+  // Find max for scaling
+  const maxCount = Math.max(...weekData.techs.flatMap(t => t.counts), 1);
+
+  bodyEl.innerHTML = weekData.techs.map(tech => {
+    const bars = weekData.days.map((d, i) => {
+      const count = tech.counts[i];
+      const widthPct = (dayPct * 0.8).toFixed(2);
+      const leftPct  = (dayPct * i + dayPct * 0.1).toFixed(2);
+      const heightPct = (count / maxCount * 85).toFixed(1);
+      const isToday = d === todayName;
+      return `<div style="position:absolute;left:${leftPct}%;width:${widthPct}%;bottom:0;height:${heightPct}%;
+        background:${isToday ? 'rgba(56,189,248,0.35)' : 'rgba(255,255,255,0.08)'};
+        border-top:2px solid ${isToday ? 'var(--accent2)' : 'rgba(255,255,255,0.2)'};
+        border-radius:3px 3px 0 0;display:flex;align-items:flex-start;justify-content:center;padding-top:3px;">
+        <span style="font-family:var(--mono);font-size:10px;color:${isToday ? 'var(--accent2)' : 'var(--muted)'};">${count}</span>
+      </div>`;
+    }).join('');
+
+    return `<div class="gantt-row" style="height:36px;">
+      <div class="gantt-tech-name">${tech.name}</div>
+      <div class="gantt-track" style="position:relative;">${bars}</div>
+    </div>`;
+  }).join('');
+}
+
+// Demo unassigned jobs for this week + next week
+const today = new Date();
+function addDays(d, n) { const r = new Date(d); r.setDate(r.getDate()+n); return r; }
+function fmtDate(d) { return d.toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'}); }
+function fmtTime(d) { return d.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}); }
+
+const DEMO_UNASSIGNED = (() => {
+  const jobs = [];
+  const titles = ['Boiler Service','Gas Safety Check','AC Installation','Emergency Repair','Annual Inspection','Leak Investigation','Pump Replacement','System Commission'];
+  const locs   = ['Acme Ltd, SW1','TechCorp, EC2','Smith & Sons, N1','West End Client','NorthGate House','City Office, EC1','Canary Wharf','Hammersmith'];
+  // AM slots: 08:00, 09:00, 10:00, 11:00 — PM slots: 12:00, 13:00, 14:00, 15:00, 16:00
+  const amHours = [8, 9, 10, 11];
+  const pmHours = [12, 13, 14, 15, 16];
+  let d = 0;
+  for (let w = 0; w < 2; w++) {
+    for (let day = 1; day <= 5; day++) {
+      const date = addDays(today, (w === 0 ? 0 : 7) - today.getDay() + day);
+      // 1–2 AM jobs, 1–2 PM jobs per day
+      const amCount = Math.floor(Math.random() * 2) + 1;
+      const pmCount = Math.floor(Math.random() * 2) + 1;
+      for (let j = 0; j < amCount; j++) {
+        const dt = new Date(date); dt.setHours(amHours[j % amHours.length], 0, 0, 0);
+        jobs.push({ week: w, date: dt, title: titles[d % titles.length], location: locs[d % locs.length] });
+        d++;
+      }
+      for (let j = 0; j < pmCount; j++) {
+        const dt = new Date(date); dt.setHours(pmHours[j % pmHours.length], 0, 0, 0);
+        jobs.push({ week: w, date: dt, title: titles[d % titles.length], location: locs[d % locs.length] });
+        d++;
+      }
+    }
+  }
+  return jobs;
+})();
+
+function renderUnassigned() {
+  const renderCol = (weekIndex, listId, countId) => {
+    const jobs = DEMO_UNASSIGNED.filter(j => j.week === weekIndex)
+      .sort((a, b) => a.date - b.date);
+    document.getElementById(countId).textContent = `${jobs.length} job${jobs.length !== 1 ? 's' : ''}`;
+
+    // Group by day, then AM/PM
+    const byDay = {};
+    jobs.forEach(j => {
+      const dayKey = fmtDate(j.date);
+      if (!byDay[dayKey]) byDay[dayKey] = { am: [], pm: [] };
+      if (j.date.getHours() < 12) byDay[dayKey].am.push(j);
+      else byDay[dayKey].pm.push(j);
+    });
+
+    const renderSlot = (slotJobs, label) => {
+      if (!slotJobs.length) return '';
+      return `<div class="unassigned-slot">
+        <div class="unassigned-slot-label">${label}</div>
+        ${slotJobs.map(j => `
+          <div class="unassigned-item">
+            <div class="unassigned-time">${fmtTime(j.date)}</div>
+            <div>
+              <div class="unassigned-job-title">${j.title}</div>
+              <div class="unassigned-job-loc">${j.location}</div>
+            </div>
+          </div>`).join('')}
+      </div>`;
+    };
+
+    document.getElementById(listId).innerHTML = Object.entries(byDay).map(([dayKey, slots]) => `
+      <div class="unassigned-day-group">
+        <div class="unassigned-day-heading">${dayKey}</div>
+        <div class="unassigned-day-slots">
+          ${renderSlot(slots.am, 'AM')}
+          ${renderSlot(slots.pm, 'PM')}
+        </div>
+      </div>`).join('');
+  };
+  renderCol(0, 'unassigned-list-this', 'unassigned-count-this');
+  renderCol(1, 'unassigned-list-next', 'unassigned-count-next');
+}
+
+async function fetchBigChange() {
+  const cfg = CONFIG.bigchange;
+  const isConfigured = cfg.apiKey && cfg.username && cfg.password;
+
+  let techs = DEMO_TECHNICIANS;
+  let weekData = DEMO_WEEK_GANTT;
+
+  if (isConfigured) {
+    document.getElementById('config-banner').style.display = 'none';
+    try {
+      const res = await fetch('https://app.bigchangeapps.com/api/1.0/job/jobs', {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json', 'key': cfg.apiKey }
+      });
+      if (!res.ok) throw new Error('API error');
+      const data = await res.json();
+
+      const techMap = {};
+      (data.Result || []).forEach(job => {
+        const name = job.ResourceName || job.AssignedTo || 'Unassigned';
+        if (!techMap[name]) techMap[name] = { name, jobs: [] };
+        const s = (job.Status || '').toLowerCase().replace(/\s/g,'');
+        techMap[name].jobs.push({
+          title: job.ContactName || job.AddressName || job.Ref || 'Job',
+          start: new Date(job.StartDate).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}),
+          end:   new Date(job.EndDate).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}),
+          status: s.includes('complet') && !s.includes('not') ? 'completed'
+                : s.includes('progress') || s.includes('travel') ? 'inprogress'
+                : s.includes('notcomplete') || s.includes('fail') ? 'notcompleted'
+                : 'scheduled'
+        });
+      });
+      techs = Object.values(techMap).filter(t => t.name !== 'Unassigned');
+      // Unassigned jobs would be fetched separately here
+    } catch(e) {
+      console.warn('BigChange API error, using demo data:', e);
+    }
+  }
+
+  renderDailyGantt(techs);
+  renderWeeklyGantt(weekData);
+  renderUnassigned();
+}
+
+const BC_VIEWS = ['daily', 'weekly', 'unassigned'];
+
+function switchBcView(view) {
+  const views = { daily: 'bc-view-daily', weekly: 'bc-view-weekly', unassigned: 'bc-view-unassigned' };
+  const tabs  = { daily: 'bc-tab-daily',  weekly: 'bc-tab-weekly',  unassigned: 'bc-tab-unassigned' };
+
+  const currentEl = document.getElementById(views[bcCurrentView]);
+  currentEl.classList.add('fading');
+
+  setTimeout(() => {
+    currentEl.style.display = 'none';
+    currentEl.classList.remove('fading');
+
+    const nextEl = document.getElementById(views[view]);
+    nextEl.style.display = 'flex';
+    nextEl.style.flexDirection = 'column';
+
+    Object.keys(tabs).forEach(v => {
+      document.getElementById(tabs[v]).className =
+        'bc-tab' + (v === view ? ' bc-tab-active' : '');
+    });
+
+    bcCurrentView = view;
+  }, 400);
+}
+
+// Wire up BigChange tab clicks for manual switching
+document.getElementById('bc-tab-daily').addEventListener('click', () => switchBcView('daily'));
+document.getElementById('bc-tab-weekly').addEventListener('click', () => switchBcView('weekly'));
+document.getElementById('bc-tab-unassigned').addEventListener('click', () => switchBcView('unassigned'));
+
+fetchBigChange();
+setInterval(fetchBigChange, CONFIG.refresh.bigchange);
+
+// Update now-line every minute
+setInterval(() => { if (bcCurrentView === 'daily') renderDailyGantt(DEMO_TECHNICIANS); }, 60 * 1000);
+
+// Cycle through all 3 views every 2 minutes
+setInterval(() => {
+  const idx = BC_VIEWS.indexOf(bcCurrentView);
+  switchBcView(BC_VIEWS[(idx + 1) % BC_VIEWS.length]);
+}, 2 * 60 * 1000);
+</script>
+</body>
+</html>
