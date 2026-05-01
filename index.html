@@ -5,7 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Dashboard</title>
 <!-- Netlify Identity widget — handles Google/MS SSO -->
-<script defer src="https://identity.netlify.com/v1/netlify-identity-widget.js"></script>
+<!-- Netlify Identity widget — handles Google SSO -->
+<script type="text/javascript" src="https://identity.netlify.com/v1/netlify-identity-widget.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
 <style>
@@ -736,7 +737,7 @@
     margin-bottom: 28px;
   }
 
-  .auth-btn {
+  [data-netlify-identity-button] {
     width: 100%;
     margin-top: 20px;
     padding: 12px 20px;
@@ -749,10 +750,10 @@
     font-weight: 700;
     cursor: pointer;
     transition: opacity 0.2s;
+    text-align: center;
   }
 
-  .auth-btn:disabled { opacity: 0.4; cursor: default; }
-  .auth-btn:not(:disabled):hover { opacity: 0.85; }
+  [data-netlify-identity-button]:hover { opacity: 0.85; }
 
   .auth-error {
     font-size: 12px;
@@ -774,7 +775,8 @@
     <div class="auth-logo">●</div>
     <div class="auth-title">Operations Dashboard</div>
     <div class="auth-subtitle">Sign in to continue</div>
-    <button class="auth-btn" id="auth-btn">Sign in with Google</button>
+    <!-- Widget attaches its own button here — no JS needed -->
+    <div data-netlify-identity-button>Sign in with Google</div>
   </div>
 </div>
 
@@ -893,43 +895,16 @@
 
 <script>
 /* ═══════════════════════════════════════════
-   NETLIFY IDENTITY — auth gate
+   NETLIFY IDENTITY — event listeners only
+   No init() call — widget auto-inits from script tag
    ═══════════════════════════════════════════ */
-(function () {
-  function onLogin() {
-    document.body.classList.add('authed');
-  }
-
-  function setup() {
-    if (!window.netlifyIdentity) return;
-
-    // Register events BEFORE calling init
-    netlifyIdentity.on('init', function (user) {
-      if (user) onLogin();
-    });
-
-    netlifyIdentity.on('login', function () {
-      netlifyIdentity.close();
-      onLogin();
-    });
-
-    // Init once — required before open() will work
-    netlifyIdentity.init();
-
-    // Wire button after init is called
-    document.getElementById('auth-btn').addEventListener('click', function () {
-      netlifyIdentity.open('login');
-    });
-  }
-
-  // Widget is deferred — wait for it to load before setting up
-  const identityScript = document.querySelector('script[src*="netlify-identity"]');
-  if (identityScript && !window.netlifyIdentity) {
-    identityScript.addEventListener('load', setup);
-  } else {
-    setup();
-  }
-})();
+netlifyIdentity.on('init', function(user) {
+  if (user) document.body.classList.add('authed');
+});
+netlifyIdentity.on('login', function() {
+  netlifyIdentity.close();
+  document.body.classList.add('authed');
+});
 
 /* ═══════════════════════════════════════════
    CONFIGURATION — edit these values
@@ -1392,7 +1367,7 @@ function renderUnassigned(jobs) {
 
 async function fetchBigChange() {
   try {
-    const res = await fetch('/api/data'); // served by edge function — auth enforced server-side
+    const res = await fetch('/api/data');
     if (res.status === 401) {
       // Session expired — drop back to login gate
       document.body.classList.remove('authed');
