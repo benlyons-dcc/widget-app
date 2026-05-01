@@ -1,0 +1,8 @@
+{
+  "name": "dashboard-scripts",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@netlify/blobs": "^8.0.0"
+  }
+}
