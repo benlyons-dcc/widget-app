@@ -702,9 +702,9 @@
     transition: background 0.2s;
   }
 
-  /* When the widget iframe is open, drop our background so the modal shows */
+  /* When the widget iframe is open, hide our gate entirely so modal shows */
   body.widget-open #auth-gate {
-    background: transparent;
+    display: none;
   }
 
   .auth-box {
@@ -770,7 +770,8 @@
 
   /* Hide dashboard content until authenticated */
   body.authed #auth-gate { display: none; }
-  body:not(.authed) > *:not(#auth-gate) { visibility: hidden; }
+  body:not(.authed):not(.widget-open) > *:not(#auth-gate) { visibility: hidden; }
+  body.widget-open > *:not(#auth-gate) { visibility: hidden; }
 </style>
 </head>
 <body>
