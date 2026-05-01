@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Dashboard</title>
 <!-- Netlify Identity widget — handles Google/MS SSO -->
-<script src="https://identity.netlify.com/v1/netlify-identity-widget.js"></script>
+<script defer src="https://identity.netlify.com/v1/netlify-identity-widget.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
 <style>
@@ -922,9 +922,10 @@
     });
   }
 
-  // Widget script is in <head> so it's available by the time body scripts run
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', setup);
+  // Widget is deferred — wait for it to load before setting up
+  const identityScript = document.querySelector('script[src*="netlify-identity"]');
+  if (identityScript && !window.netlifyIdentity) {
+    identityScript.addEventListener('load', setup);
   } else {
     setup();
   }
