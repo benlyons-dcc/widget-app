@@ -1,0 +1,8 @@
+[build]
+  publish = "."   # serve files from the repo root
+
+# Ensure data.json is never cached so the dashboard always gets fresh data
+[[headers]]
+  for = "/data.json"
+  [headers.values]
+    Cache-Control = "no-cache, no-store, must-revalidate"
