@@ -9,14 +9,11 @@ on:
 jobs:
   fetch:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
+    # No contents: write needed — data goes to Netlify Blobs, not the repo
 
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
-        with:
-          persist-credentials: true
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -26,18 +23,11 @@ jobs:
       - name: Force Node.js 24 for actions
         run: echo "FORCE_JAVASCRIPT_ACTIONS_TO_NODE24=true" >> $GITHUB_ENV
 
-      - name: Fetch BigChange data
+      - name: Fetch BigChange data and store in Netlify Blobs
         env:
           BIGCHANGE_CLIENT_ID: ${{ secrets.BIGCHANGE_CLIENT_ID }}
           BIGCHANGE_CLIENT_SECRET: ${{ secrets.BIGCHANGE_CLIENT_SECRET }}
           BIGCHANGE_CUSTOMER_ID: ${{ secrets.BIGCHANGE_CUSTOMER_ID }}
+          NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
+          NETLIFY_ACCESS_TOKEN: ${{ secrets.NETLIFY_ACCESS_TOKEN }}
         run: node scripts/fetch-bigchange.js
-
-      - name: Commit and push data.json
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add data.json
-          # Only commit if data.json actually changed
-          git diff --cached --quiet || git commit -m "chore: update BigChange data [skip ci]"
-          git push
