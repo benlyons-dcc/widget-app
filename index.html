@@ -736,23 +736,23 @@
     margin-bottom: 28px;
   }
 
-  /* Style the native Netlify Identity button to match dashboard */
-  [data-netlify-identity-button] a,
-  [data-netlify-identity-button] button {
-    display: block;
+  .auth-btn {
     width: 100%;
+    margin-top: 20px;
     padding: 12px 20px;
-    background: var(--accent) !important;
-    color: #000 !important;
-    border: none !important;
-    border-radius: 10px !important;
-    font-family: var(--sans) !important;
-    font-size: 14px !important;
-    font-weight: 700 !important;
+    background: var(--accent);
+    color: #000;
+    border: none;
+    border-radius: 10px;
+    font-family: var(--sans);
+    font-size: 14px;
+    font-weight: 700;
     cursor: pointer;
-    text-align: center;
-    text-decoration: none;
+    transition: opacity 0.2s;
   }
+
+  .auth-btn:disabled { opacity: 0.4; cursor: default; }
+  .auth-btn:not(:disabled):hover { opacity: 0.85; }
 
   .auth-error {
     font-size: 12px;
@@ -774,7 +774,7 @@
     <div class="auth-logo">●</div>
     <div class="auth-title">Operations Dashboard</div>
     <div class="auth-subtitle">Sign in to continue</div>
-    <div data-netlify-identity-button style="margin-top:20px;"></div>
+    <button class="auth-btn" id="auth-btn" disabled>Sign in with Google</button>
   </div>
 </div>
 
@@ -903,16 +903,22 @@
   function initIdentity() {
     if (!window.netlifyIdentity) return;
 
+    const btn = document.getElementById('auth-btn');
+
     netlifyIdentity.on('init', user => {
-      if (user) onLogin();
+      if (user) {
+        onLogin();
+      } else {
+        // Widget is ready — enable the button now
+        btn.disabled = false;
+        btn.addEventListener('click', () => netlifyIdentity.open('login'));
+      }
     });
 
     netlifyIdentity.on('login', () => {
       netlifyIdentity.close();
       onLogin();
     });
-
-    netlifyIdentity.init();
   }
 
   if (window.netlifyIdentity) {
