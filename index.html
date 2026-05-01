@@ -819,12 +819,9 @@ const CONFIG = {
   /* Exchange rates: uses Frankfurter (free, no key needed) */
   fx: { enabled: true },
 
-  /* BigChange REST API credentials */
-  bigchange: {
-    apiKey: '',      // Your BigChange API key
-    username: '',    // Your BigChange username
-    password: ''     // Your BigChange password
-  },
+  /* BigChange data is fetched by a GitHub Action and written to data.json.
+     No credentials needed here — see scripts/fetch-bigchange.js */
+  bigchange: {},
 
   /* Refresh intervals (milliseconds) */
   refresh: {
@@ -1221,18 +1218,20 @@ const DEMO_UNASSIGNED = (() => {
   return jobs;
 })();
 
-function renderUnassigned() {
+function renderUnassigned(jobs) {
+  jobs = jobs || DEMO_UNASSIGNED;
   const renderCol = (weekIndex, listId, countId) => {
-    const jobs = DEMO_UNASSIGNED.filter(j => j.week === weekIndex)
-      .sort((a, b) => a.date - b.date);
-    document.getElementById(countId).textContent = `${jobs.length} job${jobs.length !== 1 ? 's' : ''}`;
+    const colJobs = jobs.filter(j => j.week === weekIndex)
+      .sort((a, b) => new Date(a.date) - new Date(b.date));
+    document.getElementById(countId).textContent = `${colJobs.length} job${colJobs.length !== 1 ? 's' : ''}`;
 
     // Group by day, then AM/PM
     const byDay = {};
-    jobs.forEach(j => {
-      const dayKey = fmtDate(j.date);
+    colJobs.forEach(j => {
+      const d = new Date(j.date);
+      const dayKey = fmtDate(d);
       if (!byDay[dayKey]) byDay[dayKey] = { am: [], pm: [] };
-      if (j.date.getHours() < 12) byDay[dayKey].am.push(j);
+      if (d.getHours() < 12) byDay[dayKey].am.push(j);
       else byDay[dayKey].pm.push(j);
     });
 
@@ -1242,7 +1241,7 @@ function renderUnassigned() {
         <div class="unassigned-slot-label">${label}</div>
         ${slotJobs.map(j => `
           <div class="unassigned-item">
-            <div class="unassigned-time">${fmtTime(j.date)}</div>
+            <div class="unassigned-time">${fmtTime(new Date(j.date))}</div>
             <div>
               <div class="unassigned-job-title">${j.title}</div>
               <div class="unassigned-job-loc">${j.location}</div>
@@ -1265,47 +1264,48 @@ function renderUnassigned() {
 }
 
 async function fetchBigChange() {
-  const cfg = CONFIG.bigchange;
-  const isConfigured = cfg.apiKey && cfg.username && cfg.password;
+  try {
+    const res = await fetch('data.json?t=' + Date.now()); // cache-bust
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
 
-  let techs = DEMO_TECHNICIANS;
-  let weekData = DEMO_WEEK_GANTT;
-
-  if (isConfigured) {
     document.getElementById('config-banner').style.display = 'none';
-    try {
-      const res = await fetch('https://app.bigchangeapps.com/api/1.0/job/jobs', {
-        method: 'GET',
-        headers: { 'Content-Type': 'application/json', 'key': cfg.apiKey }
-      });
-      if (!res.ok) throw new Error('API error');
-      const data = await res.json();
 
-      const techMap = {};
-      (data.Result || []).forEach(job => {
-        const name = job.ResourceName || job.AssignedTo || 'Unassigned';
-        if (!techMap[name]) techMap[name] = { name, jobs: [] };
-        const s = (job.Status || '').toLowerCase().replace(/\s/g,'');
-        techMap[name].jobs.push({
-          title: job.ContactName || job.AddressName || job.Ref || 'Job',
-          start: new Date(job.StartDate).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}),
-          end:   new Date(job.EndDate).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}),
-          status: s.includes('complet') && !s.includes('not') ? 'completed'
-                : s.includes('progress') || s.includes('travel') ? 'inprogress'
-                : s.includes('notcomplete') || s.includes('fail') ? 'notcompleted'
-                : 'scheduled'
-        });
-      });
-      techs = Object.values(techMap).filter(t => t.name !== 'Unassigned');
-      // Unassigned jobs would be fetched separately here
-    } catch(e) {
-      console.warn('BigChange API error, using demo data:', e);
+    // Daily Gantt — fall back to demo if empty
+    const techs = (data.technicians && data.technicians.length)
+      ? data.technicians
+      : DEMO_TECHNICIANS;
+
+    // Weekly Gantt — fall back to demo if empty
+    const weekData = (data.weeklyData && data.weeklyData.techs && data.weeklyData.techs.length)
+      ? data.weeklyData
+      : DEMO_WEEK_GANTT;
+
+    // Unassigned — convert date strings back to Date objects
+    if (data.unassigned && data.unassigned.length) {
+      const converted = data.unassigned.map(j => ({ ...j, date: new Date(j.date) }));
+      renderUnassigned(converted);
+    } else {
+      renderUnassigned(DEMO_UNASSIGNED);
     }
-  }
 
-  renderDailyGantt(techs);
-  renderWeeklyGantt(weekData);
-  renderUnassigned();
+    // Show last updated time
+    if (data.generatedAt) {
+      const updated = new Date(data.generatedAt);
+      const label = updated.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+      document.getElementById('config-banner').style.display = 'none';
+      // Optionally show in card label — update the live dot title
+    }
+
+    renderDailyGantt(techs);
+    renderWeeklyGantt(weekData);
+  } catch(e) {
+    console.warn('Could not load data.json, using demo data:', e.message);
+    // Fall back to demo data silently
+    renderDailyGantt(DEMO_TECHNICIANS);
+    renderWeeklyGantt(DEMO_WEEK_GANTT);
+    renderUnassigned(DEMO_UNASSIGNED);
+  }
 }
 
 const BC_VIEWS = ['daily', 'weekly', 'unassigned'];
@@ -1343,7 +1343,7 @@ fetchBigChange();
 setInterval(fetchBigChange, CONFIG.refresh.bigchange);
 
 // Update now-line every minute
-setInterval(() => { if (bcCurrentView === 'daily') renderDailyGantt(DEMO_TECHNICIANS); }, 60 * 1000);
+setInterval(() => { if (bcCurrentView === 'daily') fetchBigChange(); }, 60 * 1000);
 
 // Cycle through all 3 views every 2 minutes
 setInterval(() => {
