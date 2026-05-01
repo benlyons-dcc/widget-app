@@ -11,7 +11,9 @@
  *   NETLIFY_SITE_ID         — Your Netlify site ID (Project configuration → General)
  *   NETLIFY_ACCESS_TOKEN    — A Netlify personal access token (User settings → OAuth)
  */
-import { getStore } from '@netlify/blobs';     = process.env.BIGCHANGE_CLIENT_ID;
+import { getStore } from '@netlify/blobs';
+
+const CLIENT_ID     = process.env.BIGCHANGE_CLIENT_ID;
 const CLIENT_SECRET = process.env.BIGCHANGE_CLIENT_SECRET;
 const CUSTOMER_ID   = process.env.BIGCHANGE_CUSTOMER_ID;
 const NETLIFY_SITE_ID      = process.env.NETLIFY_SITE_ID;
