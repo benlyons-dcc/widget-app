@@ -7,27 +7,28 @@
  * Required GitHub Secrets (Settings → Secrets and variables → Actions):
  *   BIGCHANGE_CLIENT_ID     — your OAuth client ID
  *   BIGCHANGE_CLIENT_SECRET — your OAuth client secret
- *
- * NOTE: The jobs endpoint URL and response field names below are best-guess
- * based on the v2 API structure. If jobs aren't loading, check the field names
- * against: https://developers.bigchange.com/docs/rest/api-reference
+ *   BIGCHANGE_CUSTOMER_ID   — your BigChange customer ID (required header on all API calls)
  */
 
 const fs = require('fs');
 
-const CLIENT_ID     = process.env.BIGCHANGE_CLIENT_ID;
+const CLIENT_ID   = process.env.BIGCHANGE_CLIENT_ID;
 const CLIENT_SECRET = process.env.BIGCHANGE_CLIENT_SECRET;
+const CUSTOMER_ID = process.env.BIGCHANGE_CUSTOMER_ID;
 
-if (!CLIENT_ID || !CLIENT_SECRET) {
+if (!CLIENT_ID || !CLIENT_SECRET || !CUSTOMER_ID) {
   console.error(
-    'Missing secrets. Add BIGCHANGE_CLIENT_ID and BIGCHANGE_CLIENT_SECRET\n' +
-    'in GitHub → Settings → Secrets and variables → Actions.'
+    'Missing secrets. Ensure these are set in GitHub → Settings → Secrets and variables → Actions:\n' +
+    '  BIGCHANGE_CLIENT_ID\n' +
+    '  BIGCHANGE_CLIENT_SECRET\n' +
+    '  BIGCHANGE_CUSTOMER_ID'
   );
   process.exit(1);
 }
 
 const AUTH_URL = 'https://api.bigchange.com/auth/tokens';
 const API_BASE = 'https://api.bigchange.com';
+const PAGE_SIZE = 1000; // max allowed by the API
 
 // ─── OAuth: get access token ──────────────────────────────────────────────────
 
@@ -39,24 +40,18 @@ async function getAccessToken() {
   });
 
   const res = await fetch(AUTH_URL, {
-    method:  'POST',
+    method: 'POST',
     headers: {
       'Content-Type': 'application/x-www-form-urlencoded',
-      'Accept':        'application/json',
+      'Accept':       'application/json',
     },
     body: body.toString(),
   });
 
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(`Auth failed (${res.status}): ${text}`);
-  }
+  if (!res.ok) throw new Error(`Auth failed (${res.status}): ${await res.text()}`);
 
   const json = await res.json();
-
-  if (!json.access_token) {
-    throw new Error(`No access_token in auth response: ${JSON.stringify(json)}`);
-  }
+  if (!json.access_token) throw new Error(`No access_token in response: ${JSON.stringify(json)}`);
 
   console.log(`✓ Access token obtained (expires in ${json.expires_in}s)`);
   return json.access_token;
@@ -64,108 +59,129 @@ async function getAccessToken() {
 
 // ─── Date helpers ─────────────────────────────────────────────────────────────
 
+function toISO(date) {
+  return date.toISOString(); // full ISO 8601 — API uses date-time params
+}
+
 function toDateStr(date) {
-  return date.toISOString().split('T')[0]; // YYYY-MM-DD
+  return date.toISOString().split('T')[0]; // YYYY-MM-DD for day comparisons
 }
 
 function startOfWeek(date, offsetWeeks = 0) {
   const d = new Date(date);
-  const day = d.getDay() || 7; // treat Sunday as 7
-  d.setDate(d.getDate() - day + 1 + offsetWeeks * 7); // Monday
+  const day = d.getDay() || 7;
+  d.setDate(d.getDate() - day + 1 + offsetWeeks * 7);
   d.setHours(0, 0, 0, 0);
   return d;
 }
 
 function endOfWeek(date, offsetWeeks = 0) {
   const d = startOfWeek(date, offsetWeeks);
-  d.setDate(d.getDate() + 6); // Sunday
+  d.setDate(d.getDate() + 6);
   d.setHours(23, 59, 59, 999);
   return d;
 }
 
-function classifyStatus(rawStatus) {
-  const s = (rawStatus || '').toLowerCase().replace(/\s/g, '');
-  if (s.includes('notcomplete') || s.includes('fail') || s.includes('abort')) return 'notcompleted';
-  if (s.includes('complet')) return 'completed';
-  if (s.includes('progress') || s.includes('travel')) return 'inprogress';
-  return 'scheduled';
-}
-
 function fmtTime(dateStr) {
+  if (!dateStr) return '--:--';
   const d = new Date(dateStr);
   return isNaN(d) ? '--:--' : d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
 }
 
-// ─── BigChange API fetch ──────────────────────────────────────────────────────
+// Map BigChange API status values to dashboard display statuses
+function classifyStatus(apiStatus) {
+  switch (apiStatus) {
+    case 'completedOk':          return 'completed';
+    case 'completedWithIssues':  return 'completed';
+    case 'started':              return 'inprogress';
+    case 'onTheWay':             return 'inprogress';
+    case 'suspended':            return 'inprogress';
+    case 'cancelled':            return 'notcompleted';
+    case 'refused':              return 'notcompleted';
+    default:                     return 'scheduled'; // new, scheduled, sent, read, accepted etc.
+  }
+}
 
-async function fetchJobs(token, startDate, endDate) {
-  // TODO: Verify this endpoint path against the API reference.
-  // Common patterns for v2 REST APIs: /v2/jobs, /jobs, /api/v2/jobs
-  const url = new URL(`${API_BASE}/v2/jobs`);
-  url.searchParams.set('startDate', toDateStr(startDate));
-  url.searchParams.set('endDate',   toDateStr(endDate));
+// ─── BigChange API: fetch all pages ──────────────────────────────────────────
 
-  const res = await fetch(url.toString(), {
-    headers: {
-      'Authorization': `Bearer ${token}`,
-      'Accept':        'application/json',
-    },
-  });
+async function fetchJobs(token, fromDate, toDate) {
+  let page = 1;
+  let allJobs = [];
 
-  if (!res.ok) {
-    throw new Error(`Jobs fetch failed (${res.status}): ${await res.text()}`);
+  while (true) {
+    const url = new URL(`${API_BASE}/v1/jobs`);
+    url.searchParams.set('plannedAtFrom', toISO(fromDate));
+    url.searchParams.set('plannedAtTo',   toISO(toDate));
+    url.searchParams.set('pageSize',      PAGE_SIZE);
+    url.searchParams.set('pageNumber',    page);
+
+    const res = await fetch(url.toString(), {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Customer-Id':   CUSTOMER_ID,
+        'Accept':        'application/json',
+      },
+    });
+
+    if (!res.ok) throw new Error(`Jobs fetch failed (${res.status}): ${await res.text()}`);
+
+    const json = await res.json();
+    const items = json.items || [];
+    allJobs = allJobs.concat(items);
+
+    // Stop if we got fewer items than a full page (last page)
+    if (items.length < PAGE_SIZE) break;
+    page++;
   }
 
-  const json = await res.json();
-
-  // TODO: Check the actual response shape. Common patterns:
-  //   json.data  — most REST APIs
-  //   json.items — some paginated APIs
-  //   json        — if the response is a bare array
-  //   json.Result — older BigChange API style
-  const jobs = json.data || json.items || json.Result || (Array.isArray(json) ? json : []);
-  console.log(`  → ${jobs.length} jobs (${toDateStr(startDate)} to ${toDateStr(endDate)})`);
-  return jobs;
+  console.log(`  → ${allJobs.length} jobs (${toDateStr(fromDate)} to ${toDateStr(toDate)})`);
+  return allJobs;
 }
 
 // ─── Data processing ──────────────────────────────────────────────────────────
 
 function buildDailyGantt(todayJobs) {
   const techMap = {};
+
   todayJobs.forEach(job => {
-    // TODO: Verify field names — may be resourceName, assignedTo, resource, technicianName etc.
-    const name = job.resourceName || job.ResourceName || job.assignedTo || job.AssignedTo || null;
-    if (!name) return;
-    if (!techMap[name]) techMap[name] = { name, jobs: [] };
-    techMap[name].jobs.push({
-      // TODO: Verify field names — may be contactName, address, ref, jobRef etc.
-      title:  job.contactName  || job.ContactName  || job.addressName || job.AddressName || job.ref || job.Ref || 'Job',
-      start:  fmtTime(job.startDate  || job.StartDate),
-      end:    fmtTime(job.endDate    || job.EndDate),
-      status: classifyStatus(job.status || job.Status),
+    if (!job.resourceName) return; // skip unassigned
+    if (!techMap[job.resourceName]) techMap[job.resourceName] = { name: job.resourceName, jobs: [] };
+
+    // Prefer actual times for in-progress/completed jobs, fall back to planned
+    const start = job.actualStartAt || job.plannedStartAt;
+    const end   = job.actualEndAt   || job.plannedEndAt;
+
+    techMap[job.resourceName].jobs.push({
+      title:  job.typeName || job.contactName || job.reference || 'Job',
+      start:  fmtTime(start),
+      end:    fmtTime(end),
+      status: classifyStatus(job.status),
     });
   });
-  return Object.values(techMap);
+
+  // Sort each technician's jobs by start time
+  return Object.values(techMap).map(tech => ({
+    ...tech,
+    jobs: tech.jobs.sort((a, b) => a.start.localeCompare(b.start)),
+  }));
 }
 
 function buildWeeklyGantt(thisWeekJobs, weekStart) {
-  const weekDays = ['Mon','Tue','Wed','Thu','Fri'];
+  const weekDays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
+
   const allTechNames = [...new Set(
-    thisWeekJobs
-      .map(j => j.resourceName || j.ResourceName || j.assignedTo || j.AssignedTo)
-      .filter(Boolean)
-  )];
+    thisWeekJobs.map(j => j.resourceName).filter(Boolean)
+  )].sort();
 
   const techs = allTechNames.map(name => {
     const counts = weekDays.map((_, i) => {
       const dayDate = new Date(weekStart);
       dayDate.setDate(dayDate.getDate() + i);
       const dayStr = toDateStr(dayDate);
-      return thisWeekJobs.filter(j => {
-        const jName = j.resourceName || j.ResourceName || j.assignedTo || j.AssignedTo;
-        const jDate = toDateStr(new Date(j.startDate || j.StartDate));
-        return jName === name && jDate === dayStr;
-      }).length;
+      return thisWeekJobs.filter(j =>
+        j.resourceName === name &&
+        toDateStr(new Date(j.plannedStartAt || j.actualStartAt)) === dayStr
+      ).length;
     });
     return { name, counts };
   });
@@ -175,19 +191,21 @@ function buildWeeklyGantt(thisWeekJobs, weekStart) {
 
 function buildUnassigned(thisWeekJobs, nextWeekJobs) {
   const extract = (jobs, weekIndex) => jobs
-    .filter(j => {
-      const name = j.resourceName || j.ResourceName || j.assignedTo || j.AssignedTo;
-      return !name;
-    })
+    .filter(j => !j.resourceName && j.status !== 'cancelled') // exclude cancelled
     .map(j => ({
       week:     weekIndex,
-      date:     j.startDate || j.StartDate,
-      title:    j.contactName  || j.ContactName  || j.addressName || j.AddressName || j.ref || j.Ref || 'Unassigned Job',
-      location: j.addressName  || j.AddressName  || j.addressTown || j.AddressTown || '',
+      date:     j.plannedStartAt || j.createdAt,
+      title:    j.typeName || j.contactName || j.reference || 'Unassigned Job',
+      location: j.contactAddress
+                  ? j.contactAddress.split(',').slice(0, 2).join(',').trim() // first 2 parts of address
+                  : '',
     }))
     .sort((a, b) => new Date(a.date) - new Date(b.date));
 
-  return [...extract(thisWeekJobs, 0), ...extract(nextWeekJobs, 1)];
+  return [
+    ...extract(thisWeekJobs, 0),
+    ...extract(nextWeekJobs, 1),
+  ];
 }
 
 // ─── Main ─────────────────────────────────────────────────────────────────────
@@ -205,13 +223,13 @@ async function main() {
   console.log('Authenticating with BigChange...');
   const token = await getAccessToken();
 
-  console.log('Fetching today\'s jobs...');
+  console.log("Fetching today's jobs...");
   const todayJobs = await fetchJobs(token, todayStart, todayEnd);
 
-  console.log('Fetching this week\'s jobs...');
+  console.log("Fetching this week's jobs...");
   const thisWeekJobs = await fetchJobs(token, weekStart, weekEnd);
 
-  console.log('Fetching next week\'s jobs...');
+  console.log("Fetching next week's jobs...");
   const nextWeekJobs = await fetchJobs(token, nextStart, nextEnd);
 
   const output = {
