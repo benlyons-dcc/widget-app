@@ -699,6 +699,12 @@
     justify-content: center;
     z-index: 50;
     pointer-events: none;
+    transition: background 0.2s;
+  }
+
+  /* When the widget iframe is open, drop our background so the modal shows */
+  body.widget-open #auth-gate {
+    background: transparent;
   }
 
   .auth-box {
@@ -904,6 +910,12 @@ netlifyIdentity.on('init', function(user) {
 netlifyIdentity.on('login', function() {
   netlifyIdentity.close();
   document.body.classList.add('authed');
+});
+netlifyIdentity.on('open', function() {
+  document.body.classList.add('widget-open');
+});
+netlifyIdentity.on('close', function() {
+  document.body.classList.remove('widget-open');
 });
 
 /* ═══════════════════════════════════════════
