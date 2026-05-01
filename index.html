@@ -589,6 +589,8 @@
   }
 
   .bc-view.fading { opacity: 0; }
+
+  .live-dot {
     display: inline-block;
     width: 6px;
     height: 6px;
@@ -617,32 +619,6 @@
 
   /* Scrollbar hidden */
   ::-webkit-scrollbar { display: none; }
-
-  .bc-tab {
-    font-size: 10px;
-    font-weight: 600;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    padding: 3px 8px;
-    border-radius: 5px;
-    color: var(--muted);
-    transition: all 0.2s;
-  }
-
-  .bc-tab-active {
-    background: rgba(255,255,255,0.08);
-    color: var(--text);
-  }
-
-  .bc-view {
-    transition: opacity 0.4s ease;
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-  }
-
-  .bc-view.fading { opacity: 0; }
 
   .weekly-grid {
     display: flex;
@@ -947,6 +923,27 @@
 
   // Expose getToken globally so fetchBigChange can use it
   window.getAuthToken = getToken;
+
+  // Auto re-auth 5 minutes before token expires — keeps TV dashboard running all day
+  function scheduleReauth() {
+    const expiry = parseInt(sessionStorage.getItem(EXPIRY_KEY) || '0', 10);
+    if (!expiry) return;
+    const msUntilReauth = expiry - Date.now() - (5 * 60 * 1000); // 5 min before expiry
+    if (msUntilReauth <= 0) {
+      // Already within 5 min of expiry — redirect now
+      const redirect = encodeURIComponent(window.location.origin + window.location.pathname);
+      window.location.href = GOTRUE + '/authorize?provider=google&redirect_to=' + redirect;
+      return;
+    }
+    setTimeout(function () {
+      const redirect = encodeURIComponent(window.location.origin + window.location.pathname);
+      window.location.href = GOTRUE + '/authorize?provider=google&redirect_to=' + redirect;
+    }, msUntilReauth);
+  }
+
+  if (document.body.classList.contains('authed')) {
+    scheduleReauth();
+  }
 })();
 
 
