@@ -4,6 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Dashboard</title>
+<!-- Netlify Identity widget — handles Google/MS SSO -->
+<script src="https://identity.netlify.com/v1/netlify-identity-widget.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
 <style>
@@ -686,9 +688,89 @@
     color: var(--muted);
     text-align: right;
   }
+  /* ── Auth gate ── */
+  #auth-gate {
+    position: fixed;
+    inset: 0;
+    background: var(--bg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+  }
+
+  #auth-gate.hidden { display: none; }
+
+  .auth-box {
+    background: var(--surface);
+    border: 1px solid var(--border2);
+    border-radius: 20px;
+    padding: 40px 48px;
+    text-align: center;
+    max-width: 360px;
+    width: 90%;
+  }
+
+  .auth-logo {
+    font-size: 28px;
+    color: var(--accent);
+    margin-bottom: 16px;
+  }
+
+  .auth-title {
+    font-family: var(--sans);
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: 6px;
+  }
+
+  .auth-subtitle {
+    font-size: 13px;
+    color: var(--muted);
+    margin-bottom: 28px;
+  }
+
+  .auth-btn {
+    width: 100%;
+    padding: 12px 20px;
+    background: var(--accent);
+    color: #000;
+    border: none;
+    border-radius: 10px;
+    font-family: var(--sans);
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: opacity 0.2s;
+  }
+
+  .auth-btn:hover { opacity: 0.85; }
+
+  .auth-error {
+    font-size: 12px;
+    color: var(--danger);
+    margin-top: 12px;
+    min-height: 18px;
+  }
+
+  /* Hide dashboard content until authenticated */
+  body.authed #auth-gate { display: none; }
+  body:not(.authed) > *:not(#auth-gate) { visibility: hidden; }
 </style>
 </head>
 <body>
+
+<!-- ═══════════════════ AUTH GATE ═══════════════════ -->
+<div id="auth-gate">
+  <div class="auth-box">
+    <div class="auth-logo">●</div>
+    <div class="auth-title">Operations Dashboard</div>
+    <div class="auth-subtitle">Sign in to continue</div>
+    <button class="auth-btn" id="auth-btn">Sign in with Google or Microsoft</button>
+    <div class="auth-error" id="auth-error"></div>
+  </div>
+</div>
 
 <!-- ═══════════════════ HEADER ═══════════════════ -->
 <header>
@@ -804,6 +886,49 @@
 </div>
 
 <script>
+/* ═══════════════════════════════════════════
+   NETLIFY IDENTITY — auth gate
+   ═══════════════════════════════════════════ */
+(function () {
+  const gate = document.getElementById('auth-gate');
+  const btn  = document.getElementById('auth-btn');
+  const err  = document.getElementById('auth-error');
+
+  function onLogin() {
+    document.body.classList.add('authed');
+  }
+
+  // Netlify Identity widget
+  if (window.netlifyIdentity) {
+    netlifyIdentity.on('init', user => {
+      if (user) {
+        onLogin();
+      }
+    });
+
+    netlifyIdentity.on('login', user => {
+      netlifyIdentity.close();
+      onLogin();
+    });
+
+    netlifyIdentity.on('error', e => {
+      err.textContent = 'Sign-in failed. Please try again.';
+      console.error('Netlify Identity error:', e);
+    });
+
+    btn.addEventListener('click', () => {
+      err.textContent = '';
+      netlifyIdentity.open('login');
+    });
+
+    netlifyIdentity.init();
+  } else {
+    // Netlify Identity not available — running locally, skip auth gate
+    console.warn('Netlify Identity not available — skipping auth (local mode)');
+    onLogin();
+  }
+})();
+
 /* ═══════════════════════════════════════════
    CONFIGURATION — edit these values
    ═══════════════════════════════════════════ */
@@ -1265,7 +1390,12 @@ function renderUnassigned(jobs) {
 
 async function fetchBigChange() {
   try {
-    const res = await fetch('data.json?t=' + Date.now()); // cache-bust
+    const res = await fetch('/api/data'); // served by edge function — auth enforced server-side
+    if (res.status === 401) {
+      // Session expired — drop back to login gate
+      document.body.classList.remove('authed');
+      return;
+    }
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
 

@@ -1,27 +1,38 @@
 /**
  * fetch-bigchange.js
- * Runs in GitHub Actions. Authenticates with BigChange using OAuth 2.0
- * client credentials, fetches job data, and writes data.json to the repo root.
- * The dashboard reads data.json — credentials never touch the browser.
+ * Runs in GitHub Actions. Fetches job data from BigChange and stores it
+ * securely in Netlify Blobs — never committed to the repo or exposed publicly.
+ * The dashboard retrieves data via an authenticated Edge Function at /api/data.
  *
  * Required GitHub Secrets (Settings → Secrets and variables → Actions):
- *   BIGCHANGE_CLIENT_ID     — your OAuth client ID
- *   BIGCHANGE_CLIENT_SECRET — your OAuth client secret
- *   BIGCHANGE_CUSTOMER_ID   — your BigChange customer ID (required header on all API calls)
+ *   BIGCHANGE_CLIENT_ID     — BigChange OAuth client ID
+ *   BIGCHANGE_CLIENT_SECRET — BigChange OAuth client secret
+ *   BIGCHANGE_CUSTOMER_ID   — BigChange customer ID (required API header)
+ *   NETLIFY_SITE_ID         — Your Netlify site ID (Project configuration → General)
+ *   NETLIFY_ACCESS_TOKEN    — A Netlify personal access token (User settings → OAuth)
  */
 
-const fs = require('fs');
-
-const CLIENT_ID   = process.env.BIGCHANGE_CLIENT_ID;
+const CLIENT_ID     = process.env.BIGCHANGE_CLIENT_ID;
 const CLIENT_SECRET = process.env.BIGCHANGE_CLIENT_SECRET;
-const CUSTOMER_ID = process.env.BIGCHANGE_CUSTOMER_ID;
+const CUSTOMER_ID   = process.env.BIGCHANGE_CUSTOMER_ID;
+const NETLIFY_SITE_ID      = process.env.NETLIFY_SITE_ID;
+const NETLIFY_ACCESS_TOKEN = process.env.NETLIFY_ACCESS_TOKEN;
 
 if (!CLIENT_ID || !CLIENT_SECRET || !CUSTOMER_ID) {
   console.error(
-    'Missing secrets. Ensure these are set in GitHub → Settings → Secrets and variables → Actions:\n' +
+    'Missing BigChange secrets. Ensure these are set in GitHub → Secrets:\n' +
     '  BIGCHANGE_CLIENT_ID\n' +
     '  BIGCHANGE_CLIENT_SECRET\n' +
     '  BIGCHANGE_CUSTOMER_ID'
+  );
+  process.exit(1);
+}
+
+if (!NETLIFY_SITE_ID || !NETLIFY_ACCESS_TOKEN) {
+  console.error(
+    'Missing Netlify secrets. Ensure these are set in GitHub → Secrets:\n' +
+    '  NETLIFY_SITE_ID\n' +
+    '  NETLIFY_ACCESS_TOKEN'
   );
   process.exit(1);
 }
@@ -239,9 +250,26 @@ async function main() {
     unassigned:   buildUnassigned(thisWeekJobs, nextWeekJobs),
   };
 
-  fs.writeFileSync('data.json', JSON.stringify(output, null, 2));
+  // ── Write to Netlify Blobs (private server-side storage) ──────────────────
+  // Uses the Netlify Blobs REST API directly — no npm package needed in CI.
+  // Docs: https://docs.netlify.com/build/data-and-storage/netlify-blobs/
+  const blobUrl = `https://api.netlify.com/v1/blobs/${NETLIFY_SITE_ID}/dashboard/bigchange-data`;
+
+  const blobRes = await fetch(blobUrl, {
+    method:  'PUT',
+    headers: {
+      'Authorization': `Bearer ${NETLIFY_ACCESS_TOKEN}`,
+      'Content-Type':  'application/json',
+    },
+    body: JSON.stringify(output),
+  });
+
+  if (!blobRes.ok) {
+    throw new Error(`Netlify Blobs write failed (${blobRes.status}): ${await blobRes.text()}`);
+  }
+
   console.log(
-    `✓ data.json written — ` +
+    `✓ Data written to Netlify Blobs — ` +
     `${output.technicians.length} technicians, ` +
     `${output.unassigned.length} unassigned jobs`
   );

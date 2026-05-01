@@ -1,8 +1,7 @@
 [build]
-  publish = "."   # serve files from the repo root
+  publish = "."
 
-# Ensure data.json is never cached so the dashboard always gets fresh data
-[[headers]]
-  for = "/data.json"
-  [headers.values]
-    Cache-Control = "no-cache, no-store, must-revalidate"
+# Route /api/data through the edge function — auth is enforced there
+[[edge_functions]]
+  function = "data"
+  path     = "/api/data"
