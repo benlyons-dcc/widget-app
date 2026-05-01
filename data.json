@@ -1,6 +1,209 @@
 {
-  "generatedAt": null,
-  "technicians": [],
-  "weeklyData": { "days": ["Mon","Tue","Wed","Thu","Fri"], "techs": [] },
+  "generatedAt": "2026-05-01T08:35:58.123Z",
+  "technicians": [
+    {
+      "name": "Goran Tegeltija",
+      "jobs": [
+        {
+          "title": "New Job - Flood/Water",
+          "start": "06:46",
+          "end": "07:05",
+          "status": "completed"
+        },
+        {
+          "title": "Other - Misc ",
+          "start": "08:09",
+          "end": "08:00",
+          "status": "inprogress"
+        },
+        {
+          "title": "SV - Check On Drying Progress",
+          "start": "11:00",
+          "end": "11:30",
+          "status": "scheduled"
+        }
+      ]
+    },
+    {
+      "name": "Samir Addad",
+      "jobs": [
+        {
+          "title": "SV - Check On Drying Progress",
+          "start": "08:30",
+          "end": "09:00",
+          "status": "scheduled"
+        },
+        {
+          "title": "SV - Check On Drying Progress",
+          "start": "09:00",
+          "end": "09:30",
+          "status": "scheduled"
+        },
+        {
+          "title": "New Job - Flood/Water",
+          "start": "11:00",
+          "end": "12:00",
+          "status": "scheduled"
+        },
+        {
+          "title": "New Job - Flood/Water",
+          "start": "12:00",
+          "end": "13:00",
+          "status": "scheduled"
+        }
+      ]
+    },
+    {
+      "name": "Djama Meftah",
+      "jobs": [
+        {
+          "title": "Strip out",
+          "start": "07:00",
+          "end": "09:00",
+          "status": "inprogress"
+        },
+        {
+          "title": "Drying equipment (Installation)",
+          "start": "11:00",
+          "end": "13:00",
+          "status": "scheduled"
+        }
+      ]
+    },
+    {
+      "name": "Waile Betka",
+      "jobs": [
+        {
+          "title": "Carpet Cleaning",
+          "start": "06:49",
+          "end": "09:30",
+          "status": "inprogress"
+        },
+        {
+          "title": "SV - Check On Drying Progress",
+          "start": "09:00",
+          "end": "09:30",
+          "status": "scheduled"
+        },
+        {
+          "title": "SV - Check On Drying Progress",
+          "start": "11:00",
+          "end": "11:30",
+          "status": "scheduled"
+        }
+      ]
+    },
+    {
+      "name": "Raed Abdeen",
+      "jobs": [
+        {
+          "title": "Meetings",
+          "start": "08:00",
+          "end": "09:00",
+          "status": "scheduled"
+        },
+        {
+          "title": "Leak Detection",
+          "start": "11:00",
+          "end": "13:00",
+          "status": "scheduled"
+        }
+      ]
+    },
+    {
+      "name": "Charlie Hirshman",
+      "jobs": [
+        {
+          "title": "SV - Check On Drying Progress",
+          "start": "07:00",
+          "end": "07:30",
+          "status": "scheduled"
+        },
+        {
+          "title": "Strip out",
+          "start": "07:40",
+          "end": "15:00",
+          "status": "inprogress"
+        },
+        {
+          "title": "Drying equipment (Off Hire)",
+          "start": "14:00",
+          "end": "15:00",
+          "status": "scheduled"
+        }
+      ]
+    }
+  ],
+  "weeklyData": {
+    "days": [
+      "Mon",
+      "Tue",
+      "Wed",
+      "Thu",
+      "Fri"
+    ],
+    "techs": [
+      {
+        "name": "Charlie Hirshman",
+        "counts": [
+          1,
+          1,
+          1,
+          1,
+          3
+        ]
+      },
+      {
+        "name": "Djama Meftah",
+        "counts": [
+          0,
+          0,
+          0,
+          0,
+          2
+        ]
+      },
+      {
+        "name": "Goran Tegeltija",
+        "counts": [
+          1,
+          1,
+          1,
+          2,
+          2
+        ]
+      },
+      {
+        "name": "Raed Abdeen",
+        "counts": [
+          2,
+          1,
+          2,
+          2,
+          2
+        ]
+      },
+      {
+        "name": "Samir Addad",
+        "counts": [
+          4,
+          3,
+          3,
+          4,
+          4
+        ]
+      },
+      {
+        "name": "Waile Betka",
+        "counts": [
+          1,
+          1,
+          1,
+          2,
+          3
+        ]
+      }
+    ]
+  },
   "unassigned": []
 }
