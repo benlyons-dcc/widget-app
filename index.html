@@ -707,6 +707,11 @@
     display: none;
   }
 
+  /* Give the page a white background when widget is open so its modal is visible */
+  body.widget-open {
+    background: #fff;
+  }
+
   .auth-box {
     pointer-events: all;
   }
@@ -917,6 +922,14 @@ netlifyIdentity.on('open', function() {
 });
 netlifyIdentity.on('close', function() {
   document.body.classList.remove('widget-open');
+});
+
+// Remove widget-open if it was incorrectly set during init
+window.addEventListener('load', function() {
+  const iframe = document.getElementById('netlify-identity-widget');
+  if (iframe && iframe.style.display === 'none') {
+    document.body.classList.remove('widget-open');
+  }
 });
 
 /* ═══════════════════════════════════════════
