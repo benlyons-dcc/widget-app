@@ -15,16 +15,22 @@ jobs:
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
+        with:
+          persist-credentials: true
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
+
+      - name: Force Node.js 24 for actions
+        run: echo "FORCE_JAVASCRIPT_ACTIONS_TO_NODE24=true" >> $GITHUB_ENV
 
       - name: Fetch BigChange data
         env:
           BIGCHANGE_CLIENT_ID: ${{ secrets.BIGCHANGE_CLIENT_ID }}
           BIGCHANGE_CLIENT_SECRET: ${{ secrets.BIGCHANGE_CLIENT_SECRET }}
+          BIGCHANGE_CUSTOMER_ID: ${{ secrets.BIGCHANGE_CUSTOMER_ID }}
         run: node scripts/fetch-bigchange.js
 
       - name: Commit and push data.json
