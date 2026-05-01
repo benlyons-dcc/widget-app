@@ -34,10 +34,17 @@ async function verifyJWT(token) {
 
 export default async function handler(request, context) {
   // ── Auth check ────────────────────────────────────────────────────────────
-  const cookie = request.headers.get('cookie') || '';
-  const match  = cookie.match(/(?:^|;\s*)nf_jwt=([^;]+)/);
-  const token  = match ? match[1] : null;
-
+  // Accept token from Authorization: Bearer header (GoTrue direct flow)
+  // or from nf_jwt cookie (Netlify Identity widget flow)
+  let token = null;
+  const authHeader = request.headers.get('authorization') || '';
+  if (authHeader.startsWith('Bearer ')) {
+    token = authHeader.slice(7);
+  } else {
+    const cookie = request.headers.get('cookie') || '';
+    const match  = cookie.match(/(?:^|;\s*)nf_jwt=([^;]+)/);
+    token = match ? match[1] : null;
+  }
   if (!token) return UNAUTHORIZED;
 
   const payload = await verifyJWT(token);
