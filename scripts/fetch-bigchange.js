@@ -11,8 +11,7 @@
  *   NETLIFY_SITE_ID         — Your Netlify site ID (Project configuration → General)
  *   NETLIFY_ACCESS_TOKEN    — A Netlify personal access token (User settings → OAuth)
  */
-
-const CLIENT_ID     = process.env.BIGCHANGE_CLIENT_ID;
+import { getStore } from '@netlify/blobs';     = process.env.BIGCHANGE_CLIENT_ID;
 const CLIENT_SECRET = process.env.BIGCHANGE_CLIENT_SECRET;
 const CUSTOMER_ID   = process.env.BIGCHANGE_CUSTOMER_ID;
 const NETLIFY_SITE_ID      = process.env.NETLIFY_SITE_ID;
@@ -250,23 +249,14 @@ async function main() {
     unassigned:   buildUnassigned(thisWeekJobs, nextWeekJobs),
   };
 
-  // ── Write to Netlify Blobs (private server-side storage) ──────────────────
-  // Uses the Netlify Blobs REST API directly — no npm package needed in CI.
-  // Docs: https://docs.netlify.com/build/data-and-storage/netlify-blobs/
-  const blobUrl = `https://api.netlify.com/v1/blobs/${NETLIFY_SITE_ID}/dashboard/bigchange-data`;
-
-  const blobRes = await fetch(blobUrl, {
-    method:  'PUT',
-    headers: {
-      'Authorization': `Bearer ${NETLIFY_ACCESS_TOKEN}`,
-      'Content-Type':  'application/json',
-    },
-    body: JSON.stringify(output),
+  // ── Write to Netlify Blobs via the official npm package ───────────────────
+  const store = getStore({
+    name:   'dashboard',
+    siteID: NETLIFY_SITE_ID,
+    token:  NETLIFY_ACCESS_TOKEN,
   });
 
-  if (!blobRes.ok) {
-    throw new Error(`Netlify Blobs write failed (${blobRes.status}): ${await blobRes.text()}`);
-  }
+  await store.setJSON('bigchange-data', output);
 
   console.log(
     `✓ Data written to Netlify Blobs — ` +
